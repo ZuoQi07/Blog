@@ -4322,8 +4322,8 @@ body[data-type='about'] #web_bg {
 }
 .author-content-item.personalities .image {
   position: absolute;
-  right: 30px;
-  top: 10px;
+  right: 80px;
+  top: 0px;
   width: 220px;
   -webkit-transition: -webkit-transform 2s cubic-bezier(0.13, 0.45, 0.21, 1.02);
   -moz-transition: -moz-transform 2s cubic-bezier(0.13, 0.45, 0.21, 1.02);
@@ -4333,7 +4333,7 @@ body[data-type='about'] #web_bg {
 }
 .author-content-item.personalities .image img {
   display: block;
-  margin: 0 auto 20px;
+  margin: 0 auto 50px;
   max-width: 100%;
   -webkit-transition: filter 375ms ease-in 0.2s;
   -moz-transition: filter 375ms ease-in 0.2s;
@@ -4917,13 +4917,13 @@ body[data-type='about'] #web_bg {
     height: 95%;
   }
   .author-content-item.personalities {
-    height: 200px;
+    height: 300px;
   }
   .post-tips {
     left: auto;
   }
   .author-content-item.personalities .image {
-    width: 125px;
+    width: 200px;
   }
   .site-card-group > a {
     width: 100% !important;
