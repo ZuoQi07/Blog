@@ -42,7 +42,7 @@ const pages = resolvePageToggles({
 
 export const siteConfig: SiteConfig = {
 	// 站点标题
-	title: "七月の雨",
+	title: "柒月の雨",
 
 	// 站点副标题
 	subtitle: "左柒的个人博客",
@@ -54,7 +54,7 @@ export const siteConfig: SiteConfig = {
 	description: "左柒的个人博客，在七月的雨里记下阅读、生活与创造。",
 
 	// 站点关键词
-	keywords: ["七月の雨", "左柒", "博客", "随笔", "阅读", "生活"],
+	keywords: ["柒月の雨", "左柒", "博客", "随笔", "阅读", "生活"],
 
 	// 主题色
 	themeColor: {
@@ -108,7 +108,7 @@ export const siteConfig: SiteConfig = {
 			alt: "🍀",
 		},
 		// 导航栏标题
-		title: "七月の雨",
+		title: "柒月の雨",
 		// 全宽导航栏，导航栏是否占满屏幕宽度
 		widthFull: false,
 		// 导航菜单对齐方式，left：左对齐，center：居中

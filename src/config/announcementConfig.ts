@@ -5,7 +5,7 @@ export const announcementConfig: AnnouncementConfig = {
 	title: "",
 
 	// 公告内容
-	content: "你好，我是左柒，欢迎来到「七月の雨」。",
+	content: "你好，我是左柒，欢迎来到「柒月の雨」。",
 
 	// 是否允许用户关闭公告
 	closable: true,
