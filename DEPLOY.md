@@ -7,11 +7,31 @@
 ```bash
 pnpm deploy            # 一键：构建 + 上传 + 切换 + 重载 nginx + 推送源码到 GitHub
 pnpm deploy:only       # 只发布当前的 dist/（不重新构建，仍会推送源码）
+pnpm deploy:check      # 只做连通性检查：SSH 端口、80 端口、能否登录
 pnpm deploy --no-git   # 只部署服务器，跳过 GitHub 同步
 pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 ```
 
 部署完成后脚本会带 `Host` 头访问服务器本机做自检，返回 200 才算成功；随后打印 GitHub 提交与推送结果。
+
+## SSH 连不上时
+
+脚本会在上传前先探测端口，失败时直接给出排查方向：
+
+```
+✖ 连不上 SSH 端口 121.199.9.157:22（TCP 超时）
+  · 80 端口正常，说明服务器还活着，是 SSH 被拦在外层…
+```
+
+按这个顺序查：
+
+1. **换网络试一次**（手机热点 / 换 VPN 节点）。能连上 = 本机出口 IP 被拉黑，不是服务器坏了。
+2. **阿里云安全组**：22 端口是否对当前出口 IP 开放（宽带/VPN 换 IP 后会被挡）。
+3. **云安全中心「暴力破解防御」**：多次认证失败会封禁来源 IP，控制台里能看到并解封（通常 24 小时自动解除）。
+4. **服务器上的 fail2ban**：VNC 登录后 `fail2ban-client status sshd`，解封 `fail2ban-client set sshd unbanip <IP>`；`iptables -L -n` 看有没有 DROP 规则。
+5. 用 <https://check-host.net> 从其他地区测 `121.199.9.157:22`：外部能连、只有本机连不上，就是 IP 被封。
+
+注意：部署脚本只用密钥认证，不会因为密码错误触发封禁；短期内反复手工 `ssh root@…` 试密码才容易被 fail2ban/云安全中心拉黑。
 
 ## 配置
 

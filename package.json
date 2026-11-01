@@ -24,6 +24,7 @@
     "github-cards": "npx tsx scripts/generate-github-card-data.ts",
     "deploy": "node scripts/deploy.mjs --build",
     "deploy:only": "node scripts/deploy.mjs",
+    "deploy:check": "node scripts/deploy.mjs --check",
     "deploy:cert": "node scripts/deploy.mjs --cert"
   },
   "dependencies": {

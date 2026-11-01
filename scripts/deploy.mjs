@@ -34,12 +34,14 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import net from "node:net";
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const wantsCert = process.argv.includes("--cert");
 const wantsBuild = process.argv.includes("--build");
 const wantsGit = !process.argv.includes("--no-git");
+const wantsCheck = process.argv.includes("--check");
 
 /** 极简 .env 解析：KEY=VALUE，忽略注释与空行 */
 function loadEnvFile(file) {
@@ -161,7 +163,7 @@ async function sh(conn, command, label) {
   return stdout.trim();
 }
 
-function connect() {
+async function connect(attempts = 3) {
   const options = {
     host: cfg.host,
     port: cfg.port,
@@ -176,13 +178,25 @@ function connect() {
     options.password = cfg.password;
   }
 
-  return new Promise((resolve, reject) => {
-    const conn = new Client();
-    conn
-      .once("ready", () => resolve(conn))
-      .once("error", (err) => reject(new Error(`SSH 连接失败：${err.message}`)))
-      .connect(options);
-  });
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const conn = new Client();
+        conn
+          .once("ready", () => resolve(conn))
+          .once("error", (err) => reject(new Error(`SSH 连接失败：${err.message}`)))
+          .connect(options);
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        log(`· SSH 连接失败（第 ${attempt}/${attempts} 次），3 秒后重试…`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
+  }
+  throw lastError;
 }
 
 /** 首次部署时创建 nginx 站点配置；已存在则只同步 server_name 行 */
@@ -260,9 +274,64 @@ function buildSite() {
   });
 }
 
+/** 探测 TCP 端口是否可连接 */
+function probeTcp(host, port, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host, port });
+    let settled = false;
+    const done = (ok) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(ok);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => done(true));
+    socket.once("timeout", () => done(false));
+    socket.once("error", () => done(false));
+  });
+}
+
+/** 连接前先探测端口，失败时给出可操作的排查提示 */
+async function preflight() {
+  log(`· 检查 ${cfg.host}:${cfg.port} …`);
+  if (await probeTcp(cfg.host, cfg.port, 6000)) return true;
+
+  const httpUp = await probeTcp(cfg.host, 80, 6000);
+  log("");
+  log(`✖ 连不上 SSH 端口 ${cfg.host}:${cfg.port}（TCP 超时）`);
+  if (httpUp) {
+    log("  · 80 端口正常，说明服务器还活着，是 SSH 被拦在外层，不是脚本或 sshd 的问题：");
+    log("    1) 本机出口 IP 被封：换手机热点/VPN 节点再试，能连上就说明是 IP 被拉黑");
+    log("    2) 阿里云安全组：确认 22 端口对当前出口 IP 开放（家庭宽带/VPN 出口 IP 变了会被挡）");
+    log("    3) 云安全中心「暴力破解防御」：多次认证失败会封禁来源 IP，需要在控制台解封（常见 24 小时）");
+    log("    4) 服务器上的 fail2ban / iptables：VNC 登录后 fail2ban-client status sshd / iptables -L -n");
+    log("    5) 用 check-host.net 从别的地区测 121.199.9.157:22：外部能连、只有你连不上 = IP 被封");
+  } else {
+    log("  · 80 端口也连不上，服务器可能宕机或网络异常，请先在阿里云控制台检查实例状态。");
+  }
+  log("");
+  log("  排查完再执行 pnpm deploy:only 重试；只想做连通性检查可运行 pnpm deploy:check。");
+  return false;
+}
+
 async function main() {
   if (!cfg.host) fail("缺少 DEPLOY_HOST，请在 .env.local 中配置");
   if (!cfg.password && !cfg.keyPath) fail("缺少 SSH 凭据：请配置 DEPLOY_KEY_PATH（推荐）或 DEPLOY_PASSWORD");
+
+  if (wantsCheck) {
+    const sshUp = await probeTcp(cfg.host, cfg.port, 6000);
+    const httpUp = await probeTcp(cfg.host, 80, 6000);
+    log(`SSH  ${cfg.host}:${cfg.port}  ${sshUp ? "可连接" : "超时/被拦截"}`);
+    log(`HTTP ${cfg.host}:80        ${httpUp ? "可连接" : "超时"}`);
+    if (sshUp) {
+      const conn = await connect();
+      const who = await run(conn, "whoami");
+      log(`SSH 登录成功，当前用户：${who.stdout.trim()}`);
+      conn.end();
+    }
+    process.exit(sshUp ? 0 : 1);
+  }
 
   if (wantsCert) {
     await applyCertificate();
@@ -274,6 +343,8 @@ async function main() {
   if (!existsSync(path.join(cfg.distDir, "index.html"))) {
     fail(`未找到 ${path.relative(projectRoot, cfg.distDir)}/index.html，请先执行 pnpm build`);
   }
+
+  if (!(await preflight())) process.exit(1);
 
   log(`▶ 部署 ${cfg.site} → ${cfg.user}@${cfg.host}:${cfg.port}${cfg.root}`);
 
