@@ -12,9 +12,9 @@
  *   DEPLOY_HOST=121.199.9.157      服务器地址
  *   DEPLOY_PORT=22                 SSH 端口
  *   DEPLOY_USER=root               SSH 用户
- *   DEPLOY_PASSWORD=...            SSH 密码（与 DEPLOY_KEY_PATH 二选一）
- *   DEPLOY_KEY_PATH=...            SSH 私钥路径
+ *   DEPLOY_KEY_PATH=...            SSH 私钥路径（推荐，服务器已关闭密码登录）
  *   DEPLOY_KEY_PASSPHRASE=...      私钥口令（可选）
+ *   DEPLOY_PASSWORD=...            SSH 密码（仅当服务器还开着密码登录时使用）
  *   DEPLOY_SITE=blog.julyrain.top  站点主域名（同时作为 nginx 配置名）
  *   DEPLOY_DOMAINS="blog.julyrain.top"
  *   DEPLOY_ROOT=/var/www/julyrain.top   服务器上的站点根目录
@@ -251,7 +251,7 @@ function buildSite() {
 
 async function main() {
   if (!cfg.host) fail("缺少 DEPLOY_HOST，请在 .env.local 中配置");
-  if (!cfg.password && !cfg.keyPath) fail("缺少 DEPLOY_PASSWORD 或 DEPLOY_KEY_PATH");
+  if (!cfg.password && !cfg.keyPath) fail("缺少 SSH 凭据：请配置 DEPLOY_KEY_PATH（推荐）或 DEPLOY_PASSWORD");
 
   if (wantsCert) {
     await applyCertificate();

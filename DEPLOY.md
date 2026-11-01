@@ -22,8 +22,9 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 | `DEPLOY_HOST` | 服务器 IP / 域名 | `121.199.9.157` |
 | `DEPLOY_PORT` | SSH 端口 | `22` |
 | `DEPLOY_USER` | SSH 用户 | `root` |
-| `DEPLOY_PASSWORD` | SSH 密码（与 `DEPLOY_KEY_PATH` 二选一） | （已配置） |
-| `DEPLOY_KEY_PATH` | SSH 私钥路径，推荐用它替代密码 | 空 |
+| `DEPLOY_KEY_PATH` | 本机 SSH 私钥路径（服务器已关闭密码登录，必须用密钥） | `C:\Users\17017\.ssh\id_rsa` |
+| `DEPLOY_KEY_PASSPHRASE` | 私钥口令（私钥无口令时留空） | 空 |
+| `DEPLOY_PASSWORD` | SSH 密码，仅在服务器还开着密码登录时使用 | 已移除 |
 | `DEPLOY_SITE` | 站点主域名，同时作为 nginx 配置文件名 | `blog.julyrain.top` |
 | `DEPLOY_DOMAINS` | nginx `server_name`，多个用空格分隔 | `blog.julyrain.top` |
 | `DEPLOY_ROOT` | 服务器上的站点根目录 | `/var/www/julyrain.top` |
@@ -76,8 +77,24 @@ systemctl reload nginx
 - 如果以后取消 CDN、让域名直接解析到源站，再执行：填好 `.env.local` 的 `DEPLOY_EMAIL` → `pnpm deploy:cert`（内部调用 `certbot --nginx`，自动加 443 与 301 跳转）。
 - CDN 有缓存：发布后如果页面还是旧的，在阿里云 CDN 控制台「刷新预热」里刷新对应 URL 或整个 `/` 目录。本次换站时发现 `https://blog.julyrain.top/robots.txt` 和 `/sitemap.xml` 还缓存着上一个应用（校园失物招领）的页面，需要手动刷新一次。
 
+## SSH 登录方式
+
+服务器（`121.199.9.157`）已配置为**仅密钥登录**：
+
+- 本机公钥 `~/.ssh/id_rsa.pub` 已写入 `/root/.ssh/authorized_keys`；
+- `/etc/ssh/sshd_config`：`PasswordAuthentication no`、`PermitRootLogin prohibit-password`（root 只能用密钥）；
+- 原配置备份在 `/etc/ssh/sshd_config.bak-<时间戳>`，需要恢复时覆盖回去并 `systemctl reload ssh`。
+
+直接登录：
+
+```bash
+ssh root@121.199.9.157
+```
+
+换一台电脑部署时，把新机器的公钥追加到服务器 `/root/.ssh/authorized_keys` 即可（该文件权限需为 `600`，`/root/.ssh` 为 `700`）。
+
 ## 注意
 
 - `wsxy.julyrain.top` 在同一台服务器上运行另一个应用（Docker `stronghold`，监听 127.0.0.1:3000），本次部署**没有改动**它的配置。
-- 密码写在 `.env.local` 里只是图方便；更安全的方式是配置 SSH 密钥后改用 `DEPLOY_KEY_PATH`，并删除 `DEPLOY_PASSWORD`。
+- 部署脚本用 `DEPLOY_KEY_PATH` 里的私钥登录，密码登录已关闭；如果私钥没有口令，请妥善保管该文件。
 - 部署依赖系统 `tar`（Windows 10+ 自带）与 Node 22+。
