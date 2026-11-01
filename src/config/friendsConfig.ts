@@ -31,6 +31,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 10,
 		enabled: true,
 	},
+	{
+		title: "Tianz的博客",
+		imgurl: "https://gendo.dpdns.org/img/schwarz.jpeg",
+		desc: "凡是过往 皆为序章",
+		siteurl: "https://gendo.dpdns.org/",
+		tags: ["Blog"],
+		weight: 10,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
