@@ -1,6 +1,6 @@
 ---
 title: Markdown 写法手册
-published: 2026-11-01 20:20:00
+published: 2026-11-01T20:20:00+08:00
 description: 本站常用的 Markdown 与扩展语法速查：标题、表格、代码块、提示块、公式、图表、图片网格。
 image: ""
 tags: [Markdown, 写作]
@@ -229,7 +229,7 @@ Obsidian 风格的 `[[文章]]` 可以按文件名链接到其他文章，支持
 ```yaml
 ---
 title: 文章标题
-published: 2026-11-01 20:20:00
+published: 2026-11-01T20:20:00+08:00   # 建议带时区，避免日期显示偏一天
 description: 列表和搜索结果里显示的一句话简介。
 image: ""          # 封面图，留空则不显示
 tags: [Markdown, 写作]
