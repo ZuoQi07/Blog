@@ -400,18 +400,20 @@ async function main() {
     await ensureNginxSite(conn, sftp);
 
     // 4) 解压到新版本目录并原子切换软链
-    await sh(
-      conn,
-      [
-        "set -e",
-        rootCmd(`mkdir -p ${cfg.root}/releases/${timestamp}`),
-        rootCmd(`tar -xzf ${remoteArchive} -C ${cfg.root}/releases/${timestamp}`),
-        rootCmd(`chmod -R u=rwX,go=rX ${cfg.root}/releases/${timestamp}`),
-        rootCmd(`ln -sfn ${cfg.root}/releases/${timestamp} ${cfg.root}/current`),
-        `rm -f ${remoteArchive}`,
-      ].join(" && "),
-      "发布新版本",
-    );
+    const releaseScript = [
+      "set -euo pipefail",
+      `mkdir -p ${cfg.root}/releases/${timestamp}`,
+      `tar -xzf ${remoteArchive} -C ${cfg.root}/releases/${timestamp}`,
+      // 把上一版本里的旧资源带过来：CDN 上尚未刷新的旧页面仍能加载到 /_astro 文件
+      `if [ -d ${cfg.root}/current/_astro ]; then cp -an ${cfg.root}/current/_astro/. ${cfg.root}/releases/${timestamp}/_astro/ || true; fi`,
+      `chmod -R u=rwX,go=rX ${cfg.root}/releases/${timestamp}`,
+      `ln -sfn ${cfg.root}/releases/${timestamp} ${cfg.root}/current`,
+      `rm -f ${remoteArchive}`,
+    ].join("\n");
+
+    const releaseScriptPath = `/tmp/deploy-release-${timestamp}.sh`;
+    await sftp.put(Buffer.from(releaseScript, "utf8"), releaseScriptPath);
+    await sh(conn, rootCmd(`bash ${releaseScriptPath} && rm -f ${releaseScriptPath}`), "发布新版本");
     const pruned = await pruneOldReleases(conn, timestamp);
     log(`· 已切换到 releases/${timestamp}${pruned ? `，清理旧版本 ${pruned} 个` : ""}`);
 
