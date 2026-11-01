@@ -421,9 +421,7 @@ async function main() {
     rmSync(tmpDir, { recursive: true, force: true });
   }
 
-  const primary = cfg.domains[0];
-  log(`\n提示：图片或页面仍显示旧版本时，请运行 pnpm deploy:refresh 刷新 CDN 缓存。`);
-  log(`      若域名直接解析到源站，需要执行 pnpm deploy:cert 配置 HTTPS`);
+  log(`\n提示：若域名直接解析到源站，需要执行 pnpm deploy:cert 配置 HTTPS`);
 
   // 7) 刷新 CDN 缓存（--no-cdn 可跳过）
   if (wantsCdn && cfg.cdnRefresh) {
