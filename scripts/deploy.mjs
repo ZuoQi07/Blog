@@ -118,6 +118,14 @@ server {
     gzip_min_length 1024;
     gzip_types text/plain text/css text/xml application/xml application/javascript application/json application/rss+xml image/svg+xml;
 
+    # 一次性清理浏览器缓存：访问 /clear-cache 后浏览器会丢弃本站 HTTP 缓存
+    location = /clear-cache {
+        add_header Clear-Site-Data "cache" always;
+        add_header Cache-Control "no-store" always;
+        default_type text/plain;
+        return 200 "cache cleared";
+    }
+
     location / {
         # HTML 不缓存，改名/发文章后 CDN 刷新一次即可立即生效
         add_header Cache-Control "no-cache";
