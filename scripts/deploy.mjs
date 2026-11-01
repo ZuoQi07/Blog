@@ -119,6 +119,8 @@ server {
     gzip_types text/plain text/css text/xml application/xml application/javascript application/json application/rss+xml image/svg+xml;
 
     location / {
+        # HTML 不缓存，改名/发文章后 CDN 刷新一次即可立即生效
+        add_header Cache-Control "no-cache";
         try_files $uri $uri/ $uri/index.html =404;
     }
 

@@ -87,6 +87,7 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 ```
 
 - nginx 配置：`/etc/nginx/sites-available/blog.julyrain.top`（首次部署自动创建；之后每次部署只会同步其中的 `server_name` 行，其余内容不动，certbot 改过的配置也不会被覆盖），软链到 `sites-enabled/`。
+- HTML 响应带 `Cache-Control: no-cache`（`location /` 里），静态资源仍是 `expires 30d` 的强缓存。这样改标题、发新文章后，CDN 只要回源一次就能拿到新内容，不会长时间卡在旧 HTML。
 - 发布失败时 `current` 仍指向旧版本，站点不会挂。
 - 回滚：把 `current` 指回上一个版本再重载即可
 
