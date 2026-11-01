@@ -21,7 +21,17 @@ export const friendsPageConfig: FriendsPageConfig = {
 };
 
 // 友链配置
-export const friendsConfig: FriendLink[] = [];
+export const friendsConfig: FriendLink[] = [
+	{
+		title: "TianZ的小站",
+		imgurl: "https://tianz.dpdns.org/images/schwarz.jpeg",
+		desc: "凡是过往，皆为序章。",
+		siteurl: "https://tianz.dpdns.org/",
+		tags: ["Blog"],
+		weight: 10,
+		enabled: true,
+	},
+];
 
 // 获取启用的友链并进行排序
 export const getEnabledFriends = (): FriendLink[] => {
