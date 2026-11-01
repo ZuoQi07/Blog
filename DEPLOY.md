@@ -21,7 +21,8 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 | --- | --- | --- |
 | `DEPLOY_HOST` | 服务器 IP / 域名 | `121.199.9.157` |
 | `DEPLOY_PORT` | SSH 端口 | `22` |
-| `DEPLOY_USER` | SSH 用户 | `root` |
+| `DEPLOY_USER` | SSH 用户（普通用户，通过 sudo 提权） | `zuoqi` |
+| `DEPLOY_SUDO` | 是否自动加 `sudo -n`；默认非 root 用户开启，`false` 可关闭 | 自动 |
 | `DEPLOY_KEY_PATH` | 本机 SSH 私钥路径（服务器已关闭密码登录，必须用密钥） | `C:\Users\17017\.ssh\id_rsa` |
 | `DEPLOY_KEY_PASSPHRASE` | 私钥口令（私钥无口令时留空） | 空 |
 | `DEPLOY_PASSWORD` | SSH 密码，仅在服务器还开着密码登录时使用 | 已移除 |
@@ -52,8 +53,8 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 /var/www/julyrain.top/
 ├── releases/
 │   ├── 20261101-102227/   # 每次发布一个目录，内容是当时的 dist/
-│   └── 20261101-102440/   # 最新（current 指向它）
-└── current -> releases/20261101-102440
+│   └── 20261101-110317/   # 最新（current 指向它）
+└── current -> releases/20261101-110317
 ```
 
 - nginx 配置：`/etc/nginx/sites-available/blog.julyrain.top`（首次部署自动创建；之后每次部署只会同步其中的 `server_name` 行，其余内容不动，certbot 改过的配置也不会被覆盖），软链到 `sites-enabled/`。
@@ -61,8 +62,8 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 - 回滚：把 `current` 指回上一个版本再重载即可
 
 ```bash
-ln -sfn /var/www/julyrain.top/releases/<旧版本> /var/www/julyrain.top/current
-systemctl reload nginx
+sudo ln -sfn /var/www/julyrain.top/releases/<旧版本> /var/www/julyrain.top/current
+sudo systemctl reload nginx
 ```
 
 ## 域名与 HTTPS
@@ -79,19 +80,23 @@ systemctl reload nginx
 
 ## SSH 登录方式
 
-服务器（`121.199.9.157`）已配置为**仅密钥登录**：
+服务器（`121.199.9.157`）已配置为**仅密钥 + 非 root 登录**：
 
-- 本机公钥 `~/.ssh/id_rsa.pub` 已写入 `/root/.ssh/authorized_keys`；
-- `/etc/ssh/sshd_config`：`PasswordAuthentication no`、`PermitRootLogin prohibit-password`（root 只能用密钥）；
-- 原配置备份在 `/etc/ssh/sshd_config.bak-<时间戳>`，需要恢复时覆盖回去并 `systemctl reload ssh`。
+- 普通用户 `zuoqi`（uid 1001），属于 `sudo` 组，`/etc/sudoers.d/zuoqi` 配置了免密 sudo（部署脚本需要非交互提权）；
+- 本机公钥 `~/.ssh/id_rsa.pub` 写入 `/home/zuoqi/.ssh/authorized_keys`（`600`，目录 `700`）；
+- `/etc/ssh/sshd_config`：`PasswordAuthentication no`、`PermitRootLogin no`（root 不能远程登录）；
+- 原配置备份在 `/etc/ssh/sshd_config.bak-20261101105954`（关闭密码登录前）和 `/etc/ssh/sshd_config.bak-rootlogin-<时间戳>`（禁止 root 登录前），需要恢复时覆盖回去并 `systemctl reload ssh`。
 
-直接登录：
+登录并提权：
 
 ```bash
-ssh root@121.199.9.157
+ssh zuoqi@121.199.9.157
+sudo -i                     # 需要 root 时
 ```
 
-换一台电脑部署时，把新机器的公钥追加到服务器 `/root/.ssh/authorized_keys` 即可（该文件权限需为 `600`，`/root/.ssh` 为 `700`）。
+换一台电脑部署时，把新机器的公钥追加到服务器 `/home/zuoqi/.ssh/authorized_keys`（文件 `600`，目录 `700`，属主 `zuoqi`）。
+
+部署脚本以 `zuoqi` 身份连接，只对需要的命令加 `sudo -n`（写 nginx 配置、切换版本软链、`nginx -t`、`systemctl reload nginx`、清理旧版本）。如果服务器改回 root 登录，把 `.env.local` 的 `DEPLOY_USER` 改回 `root` 即可，脚本会自动去掉 sudo。
 
 ## 注意
 

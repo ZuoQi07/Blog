@@ -357,7 +357,7 @@ async function main() {
 
     log(`\n✔ 部署完成：https://${cfg.domains[0]}/  （源站自检 HTTP ${code}）`);
     log(`  服务器目录：${cfg.root}/current -> releases/${timestamp}`);
-    log(`  回滚命令：ln -sfn ${cfg.root}/releases/<上一个版本> ${cfg.root}/current && systemctl reload nginx`);
+    log(`  回滚命令：${rootCmd(`ln -sfn ${cfg.root}/releases/<上一个版本> ${cfg.root}/current`)} && ${rootCmd("systemctl reload nginx")}`);
   } finally {
     await sftp.end().catch(() => {});
     conn.end();
