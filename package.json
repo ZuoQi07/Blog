@@ -25,6 +25,7 @@
     "deploy": "node scripts/deploy.mjs --build",
     "deploy:only": "node scripts/deploy.mjs",
     "deploy:check": "node scripts/deploy.mjs --check",
+    "deploy:refresh": "node scripts/deploy.mjs --refresh-only",
     "deploy:cert": "node scripts/deploy.mjs --cert"
   },
   "dependencies": {

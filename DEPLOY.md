@@ -5,14 +5,37 @@
 ## 常用命令
 
 ```bash
-pnpm deploy            # 一键：构建 + 上传 + 切换 + 重载 nginx + 推送源码到 GitHub
-pnpm deploy:only       # 只发布当前的 dist/（不重新构建，仍会推送源码）
+pnpm deploy            # 一键：构建 + 上传 + 切换 + 重载 nginx + 刷新 CDN + 推送源码到 GitHub
+pnpm deploy:only       # 只发布当前的 dist/（不重新构建）
 pnpm deploy:check      # 只做连通性检查：SSH 端口、80 端口、能否登录
+pnpm deploy:refresh    # 只刷新 CDN 缓存（不部署）
 pnpm deploy --no-git   # 只部署服务器，跳过 GitHub 同步
+pnpm deploy --no-cdn   # 只部署服务器，跳过 CDN 刷新
 pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 ```
 
-部署完成后脚本会带 `Host` 头访问服务器本机做自检，返回 200 才算成功；随后打印 GitHub 提交与推送结果。
+部署完成后脚本会带 `Host` 头访问服务器本机做自检，返回 200 才算成功；随后刷新 CDN 并打印 GitHub 提交与推送结果。
+
+## CDN 缓存刷新
+
+`/_astro/` 下的文件名带内容哈希，换图片/改样式后旧文件会留在 CDN 缓存里（30 天），旧页面被缓存时会继续显示旧图。脚本在每次发布成功后自动调用阿里云 CDN 的 `RefreshObjectCaches` 刷新目录。
+
+`.env.local` 里配置（默认刷新站点根目录 `https://<域名>/`）：
+
+```ini
+ALIYUN_ACCESS_KEY_ID=...
+ALIYUN_ACCESS_KEY_SECRET=...
+DEPLOY_CDN_REFRESH=true
+DEPLOY_CDN_PATHS=https://blog.julyrain.top/
+```
+
+需要的权限：RAM 用户必须能调用 `cdn:RefreshObjectCaches`（直接授予系统策略 `AliyunCDNFullAccess` 最省事，或自定义策略只放行该 Action）。权限不足时接口返回：
+
+```
+Forbidden.RAM User not authorized to operate on the specified resource
+```
+
+刷新失败只会打印警告，不影响站点发布。手动刷新：`pnpm deploy:refresh`。
 
 ## SSH 连不上时
 

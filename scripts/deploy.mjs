@@ -28,6 +28,7 @@
  *     └── current -> releases/<时间戳>
  */
 import { execFile, spawn } from "node:child_process";
+import crypto from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import net from "node:net";
 import { tmpdir } from "node:os";
@@ -43,6 +44,8 @@ const wantsCert = process.argv.includes("--cert");
 const wantsBuild = process.argv.includes("--build");
 const wantsGit = !process.argv.includes("--no-git");
 const wantsCheck = process.argv.includes("--check");
+const wantsCdn = !process.argv.includes("--no-cdn");
+const wantsRefreshOnly = process.argv.includes("--refresh-only");
 
 /** 极简 .env 解析：KEY=VALUE，忽略注释与空行 */
 function loadEnvFile(file) {
@@ -85,6 +88,13 @@ const cfg = {
   gitRemote: env.DEPLOY_GIT_REMOTE || "git@github.com:ZuoQi07/Blog.git",
   // 非 root 用户通过 sudo 提权；DEPLOY_SUDO=false 可强制关闭
   sudo: env.DEPLOY_SUDO === "false" ? false : (env.DEPLOY_USER || "root") !== "root",
+  aliyunKeyId: env.ALIYUN_ACCESS_KEY_ID,
+  aliyunKeySecret: env.ALIYUN_ACCESS_KEY_SECRET,
+  cdnRefresh: env.DEPLOY_CDN_REFRESH !== "false",
+  cdnPaths: (env.DEPLOY_CDN_PATHS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean),
 };
 
 /** 需要 root 权限的命令前面加 sudo -n（免密且不等待输入） */
@@ -284,6 +294,15 @@ async function main() {
   if (!cfg.host) fail("缺少 DEPLOY_HOST，请在 .env.local 中配置");
   if (!cfg.password && !cfg.keyPath) fail("缺少 SSH 凭据：请配置 DEPLOY_KEY_PATH（推荐）或 DEPLOY_PASSWORD");
 
+  if (wantsRefreshOnly) {
+    try {
+      await refreshCdn();
+    } catch (error) {
+      fail(error.message);
+    }
+    return;
+  }
+
   if (wantsCheck) {
     const sshUp = await probeTcp(cfg.host, cfg.port, 6000);
     const httpUp = await probeTcp(cfg.host, 80, 6000);
@@ -403,10 +422,19 @@ async function main() {
   }
 
   const primary = cfg.domains[0];
-  log(`\n提示：图片或页面仍显示旧版本时，请在 CDN 控制台刷新 ${primary} 的目录缓存（/）。`);
+  log(`\n提示：图片或页面仍显示旧版本时，请运行 pnpm deploy:refresh 刷新 CDN 缓存。`);
   log(`      若域名直接解析到源站，需要执行 pnpm deploy:cert 配置 HTTPS`);
 
-  // 7) 源码同步到 GitHub（--no-git 可跳过）
+  // 7) 刷新 CDN 缓存（--no-cdn 可跳过）
+  if (wantsCdn && cfg.cdnRefresh) {
+    try {
+      await refreshCdn();
+    } catch (error) {
+      log(`⚠ ${error.message}（不影响本次发布）`);
+    }
+  }
+
+  // 8) 源码同步到 GitHub（--no-git 可跳过）
   if (wantsGit) {
     try {
       await publishGit();
@@ -414,6 +442,55 @@ async function main() {
       throw new Error(`服务器部署已完成，但源码推送 GitHub 失败：${error.message}`);
     }
   }
+}
+
+/** 阿里云 CDN 目录刷新（RPC 风格签名，SignatureVersion 1.0） */
+async function refreshCdn(paths) {
+  const keyId = cfg.aliyunKeyId;
+  const secret = cfg.aliyunKeySecret;
+  if (!keyId || !secret) {
+    log("· 未配置 ALIYUN_ACCESS_KEY_ID / ALIYUN_ACCESS_KEY_SECRET，跳过 CDN 刷新");
+    return false;
+  }
+
+  const targets = paths && paths.length > 0 ? paths : cfg.cdnPaths.length > 0 ? cfg.cdnPaths : [`https://${cfg.domains[0]}/`];
+  const encode = (value) =>
+    encodeURIComponent(String(value)).replace(
+      /[!'()*]/g,
+      (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+
+  const params = {
+    Action: "RefreshObjectCaches",
+    ObjectPath: targets.join("\n"),
+    ObjectType: "Directory",
+    Format: "JSON",
+    Version: "2018-05-10",
+    AccessKeyId: keyId,
+    SignatureMethod: "HMAC-SHA1",
+    SignatureVersion: "1.0",
+    SignatureNonce: crypto.randomUUID(),
+    Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+  };
+
+  const canonicalQuery = Object.keys(params)
+    .sort()
+    .map((key) => `${encode(key)}=${encode(params[key])}`)
+    .join("&");
+  const stringToSign = `GET&%2F&${encode(canonicalQuery)}`;
+  const signature = crypto
+    .createHmac("sha1", `${secret}&`)
+    .update(stringToSign)
+    .digest("base64");
+
+  log(`▶ 刷新 CDN 缓存：${targets.join("、")}`);
+  const response = await fetch(`https://cdn.aliyuncs.com/?${canonicalQuery}&Signature=${encode(signature)}`);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || body.Code) {
+    throw new Error(`阿里云 CDN 刷新失败：${body.Code || response.status} ${body.Message || ""}`.trim());
+  }
+  log(`· CDN 刷新已提交（TaskId ${body.RefreshTaskId || "?"}，通常 1 分钟内生效）`);
+  return true;
 }
 
 /** 执行 git 命令；allowFail 时失败返回 null */
