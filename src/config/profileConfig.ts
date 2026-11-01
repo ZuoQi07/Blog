@@ -22,6 +22,18 @@ export const profileConfig: ProfileConfig = {
 	// showName: true 时显示图标和名称，false 时只显示图标
 	links: [
 		{
+			name: "GitHub",
+			icon: "fa7-brands:github",
+			url: "https://github.com/ZuoQi07",
+			showName: false,
+		},
+		{
+			name: "哔哩哔哩",
+			icon: "fa7-brands:bilibili",
+			url: "https://space.bilibili.com/544219567",
+			showName: false,
+		},
+		{
 			name: "RSS",
 			icon: "fa7-solid:rss",
 			url: "/rss/",
