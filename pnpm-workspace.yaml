@@ -1,0 +1,7 @@
+packages:
+  - '.'
+allowBuilds:
+  cpu-features: false
+  esbuild: true
+  ssh2: true
+  workerd: true
