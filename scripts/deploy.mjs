@@ -80,7 +80,14 @@ const cfg = {
   email: env.DEPLOY_EMAIL,
   distDir: path.resolve(projectRoot, env.DEPLOY_DIST || "dist"),
   gitRemote: env.DEPLOY_GIT_REMOTE || "git@github.com:ZuoQi07/Blog.git",
+  // 非 root 用户通过 sudo 提权；DEPLOY_SUDO=false 可强制关闭
+  sudo: env.DEPLOY_SUDO === "false" ? false : (env.DEPLOY_USER || "root") !== "root",
 };
+
+/** 需要 root 权限的命令前面加 sudo -n（免密且不等待输入） */
+function rootCmd(command) {
+  return cfg.sudo ? `sudo -n ${command}` : command;
+}
 
 function log(message) {
   console.log(message);
@@ -188,7 +195,7 @@ async function ensureNginxSite(conn, sftp) {
   if (!exists) {
     const tmp = `/tmp/nginx-${cfg.site}.conf`;
     await sftp.put(Buffer.from(nginxConfig(), "utf8"), tmp);
-    await sh(conn, `mv ${tmp} ${configPath} && chmod 644 ${configPath}`, "写入 nginx 配置");
+    await sh(conn, `${rootCmd(`mv ${tmp} ${configPath}`)} && ${rootCmd(`chmod 644 ${configPath}`)}`, "写入 nginx 配置");
     log(`· 已创建 nginx 配置：${configPath}`);
   } else {
     // 已存在的配置（可能被 certbot 改过）只更新 server_name，其余内容保持不动
@@ -197,10 +204,14 @@ async function ensureNginxSite(conn, sftp) {
     if (updated !== current) {
       const tmp = `/tmp/nginx-${cfg.site}.conf`;
       await sftp.put(Buffer.from(updated, "utf8"), tmp);
-      await sh(conn, `cp ${configPath} ${configPath}.bak && mv ${tmp} ${configPath} && chmod 644 ${configPath}`, "更新 nginx 配置");
-      const test = await run(conn, "nginx -t");
+      await sh(
+        conn,
+        `${rootCmd(`cp ${configPath} ${configPath}.bak`)} && ${rootCmd(`mv ${tmp} ${configPath}`)} && ${rootCmd(`chmod 644 ${configPath}`)}`,
+        "更新 nginx 配置",
+      );
+      const test = await run(conn, rootCmd("nginx -t"));
       if (test.code !== 0) {
-        await sh(conn, `mv ${configPath}.bak ${configPath}`, "回滚 nginx 配置");
+        await sh(conn, rootCmd(`mv ${configPath}.bak ${configPath}`), "回滚 nginx 配置");
         throw new Error(`nginx -t 校验失败，已回滚：\n${test.stderr || test.stdout}`);
       }
       log(`· 已更新 server_name → ${serverNames}`);
@@ -209,8 +220,8 @@ async function ensureNginxSite(conn, sftp) {
     }
   }
 
-  await sh(conn, `ln -sfn ${configPath} ${enabledPath}`, "启用 nginx 站点");
-  const test = await run(conn, "nginx -t");
+  await sh(conn, rootCmd(`ln -sfn ${configPath} ${enabledPath}`), "启用 nginx 站点");
+  const test = await run(conn, rootCmd("nginx -t"));
   if (test.code !== 0) {
     throw new Error(`nginx -t 校验失败，未重载：\n${test.stderr || test.stdout}`);
   }
@@ -225,7 +236,7 @@ async function pruneOldReleases(conn, timestamp) {
   const stale = releases.slice(cfg.keep);
   for (const dir of stale) {
     if (path.basename(dir) === timestamp) continue;
-    await run(conn, `rm -rf ${dir}`);
+    await run(conn, rootCmd(`rm -rf ${dir}`));
   }
   return stale.length;
 }
@@ -320,10 +331,10 @@ async function main() {
       conn,
       [
         "set -e",
-        `mkdir -p ${cfg.root}/releases/${timestamp}`,
-        `tar -xzf ${remoteArchive} -C ${cfg.root}/releases/${timestamp}`,
-        `chmod -R u=rwX,go=rX ${cfg.root}/releases/${timestamp}`,
-        `ln -sfn ${cfg.root}/releases/${timestamp} ${cfg.root}/current`,
+        rootCmd(`mkdir -p ${cfg.root}/releases/${timestamp}`),
+        rootCmd(`tar -xzf ${remoteArchive} -C ${cfg.root}/releases/${timestamp}`),
+        rootCmd(`chmod -R u=rwX,go=rX ${cfg.root}/releases/${timestamp}`),
+        rootCmd(`ln -sfn ${cfg.root}/releases/${timestamp} ${cfg.root}/current`),
         `rm -f ${remoteArchive}`,
       ].join(" && "),
       "发布新版本",
@@ -332,7 +343,7 @@ async function main() {
     log(`· 已切换到 releases/${timestamp}${pruned ? `，清理旧版本 ${pruned} 个` : ""}`);
 
     // 5) 重载 nginx
-    await sh(conn, "systemctl reload nginx", "重载 nginx");
+    await sh(conn, rootCmd("systemctl reload nginx"), "重载 nginx");
 
     // 6) 本机带 Host 头自检
     const probe = await run(
@@ -433,11 +444,11 @@ async function applyCertificate() {
     const domainArgs = cfg.domains.map((domain) => `-d ${domain}`).join(" ");
     const { stdout, stderr } = await sh(
       conn,
-      `certbot --nginx ${domainArgs} --non-interactive --agree-tos -m ${cfg.email} --redirect`,
+      rootCmd(`certbot --nginx ${domainArgs} --non-interactive --agree-tos -m ${cfg.email} --redirect`),
       "certbot",
     );
     log(stdout || stderr);
-    await sh(conn, "systemctl reload nginx", "重载 nginx");
+    await sh(conn, rootCmd("systemctl reload nginx"), "重载 nginx");
     const probe = await run(
       conn,
       `curl -s -o /dev/null -w '%{http_code}' -H 'Host: ${cfg.domains[0]}' https://127.0.0.1/ -k`,
