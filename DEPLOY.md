@@ -129,7 +129,7 @@ sudo systemctl reload nginx
 
 - HTTPS 证书由 CDN 托管，源站只需要监听 80，**不需要**在服务器上跑 certbot。
 - 如果以后取消 CDN、让域名直接解析到源站，再执行：填好 `.env.local` 的 `DEPLOY_EMAIL` → `pnpm deploy:cert`（内部调用 `certbot --nginx`，自动加 443 与 301 跳转）。
-- CDN 有独立缓存：切换主题或替换图片后，若内页仍显示旧页面/旧图，在阿里云 CDN 控制台「刷新预热」里刷新整个 `https://blog.julyrain.top/` 目录一次，让各路由重新回源。此后若 CDN 遵循源站响应头，`no-store` / `no-cache` 会阻止内页和固定路径资源再次积累陈旧内容；若控制台配置了强制缓存规则，也要让 HTML 和固定路径资源遵循源站策略。部署机未配置阿里云 CDN API 凭据，因此刷新由控制台完成。
+- CDN 有独立缓存：切换主题或替换图片后，若内页仍显示旧页面/旧图，`pnpm deploy` 会自动调用阿里云 CDN 刷新根目录（见上文「CDN 缓存刷新」），手动刷新用 `pnpm deploy:refresh`。
 
 ## SSH 登录方式
 
@@ -150,6 +150,52 @@ sudo -i                     # 需要 root 时
 换一台电脑部署时，把新机器的公钥追加到服务器 `/home/zuoqi/.ssh/authorized_keys`（文件 `600`，目录 `700`，属主 `zuoqi`）。
 
 部署脚本以 `zuoqi` 身份连接，只对需要的命令加 `sudo -n`（写 nginx 配置、切换版本软链、`nginx -t`、`systemctl reload nginx`、清理旧版本）。如果服务器改回 root 登录，把 `.env.local` 的 `DEPLOY_USER` 改回 `root` 即可，脚本会自动去掉 sudo。
+
+## 评论系统（Artalk）
+
+评论服务独立部署在同一台服务器，域名 `https://comment.julyrain.top`：
+
+| 项 | 值 |
+| --- | --- |
+| 容器 | Docker `artalk`（`artalk/artalk-go` v2.10.1），`--restart unless-stopped` |
+| 监听 | `127.0.0.1:23366`（不对外暴露，仅 nginx 反代） |
+| 数据 | SQLite `/opt/artalk/artalk.db`，配置 `/opt/artalk/artalk.yml`，图片 `/opt/artalk/artalk-img/` |
+| 反向代理 | `/etc/nginx/sites-available/comment.julyrain.top` → `127.0.0.1:23366` |
+| 证书 | certbot 签发并自动续期（`certbot renew` 定时任务） |
+| 管理后台 | <https://comment.julyrain.top/sidebar/> |
+| 主题配置 | `src/config/commentConfig.ts`：`type: "artalk"`、`server: "https://comment.julyrain.top/"`、`visitorCount: true` |
+
+常用操作：
+
+```bash
+sudo docker ps --filter name=artalk            # 状态
+sudo docker logs -f artalk                     # 日志
+sudo docker restart artalk                     # 重启
+sudo tar czf /root/artalk-$(date +%F).tar.gz -C /opt artalk   # 备份（含 SQLite）
+```
+
+升级：
+
+```bash
+sudo docker pull artalk/artalk-go:latest
+sudo docker rm -f artalk
+sudo docker run -d --name artalk --restart unless-stopped \
+  -p 127.0.0.1:23366:23366 -v /opt/artalk:/data artalk/artalk-go server --config /data/artalk.yml
+```
+
+`artalk.yml` 的 `trusted_domains` 必须包含 `https://blog.julyrain.top`，否则评论接口会因跨域被拒绝；邮件通知、审核、表情、敏感词等在后台「设置」里配置。
+
+### DNS 记录（火山引擎）
+
+`comment.julyrain.top` 的 A 记录由脚本管理，凭据在 `.env.local` 的 `VOLC_ACCESS_KEY_ID` / `VOLC_SECRET_ACCESS_KEY`：
+
+```bash
+node scripts/volc-dns.mjs zones                              # 域名列表
+node scripts/volc-dns.mjs records julyrain.top               # 记录列表
+node scripts/volc-dns.mjs add-a julyrain.top comment 1.2.3.4 # 新增 A 记录
+```
+
+火山引擎 DNS 接口版本为 `2018-08-01`，`CreateRecord` 需要用 POST 提交（脚本已处理）。
 
 ## 注意
 
