@@ -26,9 +26,18 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 按这个顺序查：
 
 1. **换网络试一次**（手机热点 / 换 VPN 节点）。能连上 = 本机出口 IP 被拉黑，不是服务器坏了。
-2. **阿里云安全组**：22 端口是否对当前出口 IP 开放（宽带/VPN 换 IP 后会被挡）。
-3. **云安全中心「暴力破解防御」**：多次认证失败会封禁来源 IP，控制台里能看到并解封（通常 24 小时自动解除）。
-4. **服务器上的 fail2ban**：VNC 登录后 `fail2ban-client status sshd`，解封 `fail2ban-client set sshd unbanip <IP>`；`iptables -L -n` 看有没有 DROP 规则。
+2. **服务器上的 fail2ban（本机已经踩过一次）**：`bantime = 1h`、`findtime = 10m`、`maxretry = 5`，10 分钟内 5 次认证失败就封 1 小时。用云助手/VNC 登录后：
+
+   ```bash
+   sudo fail2ban-client status sshd          # 看 Banned IP list
+   sudo fail2ban-client set sshd unbanip <你的出口 IP>
+   sudo fail2ban-client unban --all          # 或全部解封
+   ```
+
+   另外注意：短时间反复 `ssh root@…` 试密码、或用 `ssh -o PreferredAuthentications=password` 验证，都会计入失败次数。
+3. **阿里云安全组**：22 端口是否对当前出口 IP 开放（宽带/VPN 换 IP 后会被挡）。
+4. **云安全中心「暴力破解防御」**：多次认证失败会封禁来源 IP，控制台里能看到并解封。
+5. 用 <https://check-host.net> 从其他地区测 `121.199.9.157:22`：外部能连、只有本机连不上，就是 IP 被封。
 5. 用 <https://check-host.net> 从其他地区测 `121.199.9.157:22`：外部能连、只有本机连不上，就是 IP 被封。
 
 注意：部署脚本只用密钥认证，不会因为密码错误触发封禁；短期内反复手工 `ssh root@…` 试密码才容易被 fail2ban/云安全中心拉黑。
