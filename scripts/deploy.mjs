@@ -27,14 +27,15 @@
  *     ├── releases/<时间戳>/     每次发布的完整站点
  *     └── current -> releases/<时间戳>
  */
-import { Client } from "ssh2";
-import SftpClient from "ssh2-sftp-client";
 import { execFile, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import net from "node:net";
+import { Client } from "ssh2";
+import SftpClient from "ssh2-sftp-client";
+import { migrateNginxConfig, renderNginxConfig } from "./nginx-config.mjs";
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
@@ -100,56 +101,6 @@ function fail(message) {
   process.exit(1);
 }
 
-function nginxConfig() {
-  const serverNames = cfg.domains.join(" ");
-  return `# 由 scripts/deploy.mjs 生成的静态博客站点配置（首次部署自动创建，之后不会覆盖）
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${serverNames};
-
-    root ${cfg.root}/current;
-    index index.html;
-    charset utf-8;
-    client_max_body_size 20m;
-
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml application/xml application/javascript application/json application/rss+xml image/svg+xml;
-
-    # 一次性清理浏览器缓存：访问 /clear-cache 后浏览器会丢弃本站 HTTP 缓存
-    location = /clear-cache {
-        add_header Clear-Site-Data "cache" always;
-        add_header Cache-Control "no-store" always;
-        default_type text/plain;
-        return 200 "cache cleared";
-    }
-
-    location / {
-        # HTML 不缓存，改名/发文章后 CDN 刷新一次即可立即生效
-        add_header Cache-Control "no-cache";
-        try_files $uri $uri/ $uri/index.html =404;
-    }
-
-    error_page 404 /404.html;
-    location = /404.html {
-        internal;
-    }
-
-    location ~* \\.(?:css|js|mjs|map|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|webp|avif|ico)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-        try_files $uri =404;
-    }
-
-    access_log /var/log/nginx/${cfg.site}.access.log;
-    error_log  /var/log/nginx/${cfg.site}.error.log;
-}
-`;
-}
-
 /** 在远端执行命令，返回 { code, stdout, stderr } */
 function run(conn, command) {
   return new Promise((resolve, reject) => {
@@ -209,7 +160,7 @@ async function connect(attempts = 3) {
   throw lastError;
 }
 
-/** 首次部署时创建 nginx 站点配置；已存在则只同步 server_name 行 */
+/** 首次部署时创建 nginx 站点配置；已存在时同步域名和生成式缓存策略 */
 async function ensureNginxSite(conn, sftp) {
   const configPath = `/etc/nginx/sites-available/${cfg.site}`;
   const enabledPath = `/etc/nginx/sites-enabled/${cfg.site}`;
@@ -218,13 +169,14 @@ async function ensureNginxSite(conn, sftp) {
 
   if (!exists) {
     const tmp = `/tmp/nginx-${cfg.site}.conf`;
-    await sftp.put(Buffer.from(nginxConfig(), "utf8"), tmp);
+    await sftp.put(Buffer.from(renderNginxConfig(cfg), "utf8"), tmp);
     await sh(conn, `${rootCmd(`mv ${tmp} ${configPath}`)} && ${rootCmd(`chmod 644 ${configPath}`)}`, "写入 nginx 配置");
     log(`· 已创建 nginx 配置：${configPath}`);
   } else {
-    // 已存在的配置（可能被 certbot 改过）只更新 server_name，其余内容保持不动
+    // 保留 certbot 和用户自定义配置，只更新已知的部署脚本生成区块。
     const current = (await sftp.get(configPath)).toString("utf8");
-    const updated = current.replace(/^(\s*)server_name\s+[^;]+;/gm, `$1server_name ${serverNames};`);
+    const migration = migrateNginxConfig(current, cfg.domains);
+    const updated = migration.config;
     if (updated !== current) {
       const tmp = `/tmp/nginx-${cfg.site}.conf`;
       await sftp.put(Buffer.from(updated, "utf8"), tmp);
@@ -238,9 +190,12 @@ async function ensureNginxSite(conn, sftp) {
         await sh(conn, rootCmd(`mv ${configPath}.bak ${configPath}`), "回滚 nginx 配置");
         throw new Error(`nginx -t 校验失败，已回滚：\n${test.stderr || test.stdout}`);
       }
-      log(`· 已更新 server_name → ${serverNames}`);
+      log("· 已更新 Nginx 站点配置");
+      if (migration.cachePolicyUpdated) {
+        log("· 已更新 Nginx 缓存策略：页面和固定路径资源重新验证，哈希资源长期缓存");
+      }
     } else {
-      log(`· nginx 配置已是最新（server_name ${serverNames}）`);
+      log(`· Nginx 配置已是最新（server_name ${serverNames}）`);
     }
   }
 
@@ -448,7 +403,7 @@ async function main() {
   }
 
   const primary = cfg.domains[0];
-  log(`\n提示：若浏览器看到旧内容，请在 CDN 控制台刷新缓存（${primary} 走 CDN 时）`);
+  log(`\n提示：图片或页面仍显示旧版本时，请在 CDN 控制台刷新 ${primary} 的目录缓存（/）。`);
   log(`      若域名直接解析到源站，需要执行 pnpm deploy:cert 配置 HTTPS`);
 
   // 7) 源码同步到 GitHub（--no-git 可跳过）

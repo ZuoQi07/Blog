@@ -86,8 +86,8 @@ pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 └── current -> releases/20261101-110317
 ```
 
-- nginx 配置：`/etc/nginx/sites-available/blog.julyrain.top`（首次部署自动创建；之后每次部署只会同步其中的 `server_name` 行，其余内容不动，certbot 改过的配置也不会被覆盖），软链到 `sites-enabled/`。
-- HTML 响应带 `Cache-Control: no-cache`（`location /` 里），静态资源仍是 `expires 30d` 的强缓存。这样改标题、发新文章后，CDN 只要回源一次就能拿到新内容，不会长时间卡在旧 HTML。
+- nginx 配置：`/etc/nginx/sites-available/blog.julyrain.top`（首次部署自动创建；之后同步域名和部署脚本生成的缓存区块，保留其他自定义设置及 certbot 配置），软链到 `sites-enabled/`。
+- HTML 使用 `Cache-Control: no-store`，固定 URL 的 `public` 资源要求重新验证；只有文件名带内容哈希的 `/_astro/` 资源使用一年 immutable 缓存，避免替换图片后浏览器或 CDN 继续显示旧内容。
 - 发布失败时 `current` 仍指向旧版本，站点不会挂。
 - 回滚：把 `current` 指回上一个版本再重载即可
 
@@ -106,7 +106,7 @@ sudo systemctl reload nginx
 
 - HTTPS 证书由 CDN 托管，源站只需要监听 80，**不需要**在服务器上跑 certbot。
 - 如果以后取消 CDN、让域名直接解析到源站，再执行：填好 `.env.local` 的 `DEPLOY_EMAIL` → `pnpm deploy:cert`（内部调用 `certbot --nginx`，自动加 443 与 301 跳转）。
-- CDN 有缓存：发布后如果页面还是旧的，在阿里云 CDN 控制台「刷新预热」里刷新对应 URL 或整个 `/` 目录。本次换站时发现 `https://blog.julyrain.top/robots.txt` 和 `/sitemap.xml` 还缓存着上一个应用（校园失物招领）的页面，需要手动刷新一次。
+- CDN 有独立缓存：切换主题或替换图片后，若内页仍显示旧页面/旧图，在阿里云 CDN 控制台「刷新预热」里刷新整个 `https://blog.julyrain.top/` 目录一次，让各路由重新回源。此后若 CDN 遵循源站响应头，`no-store` / `no-cache` 会阻止内页和固定路径资源再次积累陈旧内容；若控制台配置了强制缓存规则，也要让 HTML 和固定路径资源遵循源站策略。部署机未配置阿里云 CDN API 凭据，因此刷新由控制台完成。
 
 ## SSH 登录方式
 
