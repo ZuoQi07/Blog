@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * 一键部署脚本 —— 把 dist/ 发布到远程服务器并切换 nginx 站点
+ * 一键部署脚本 —— 构建产物发布到服务器，同时把源码提交并推送到 GitHub
  *
  * 用法：
- *   pnpm deploy            # 构建 + 部署（package.json 里已串联 build）
- *   pnpm deploy:only       # 只部署当前的 dist/，不重新构建
+ *   pnpm deploy            # 构建 + 部署到服务器 + 推送源码到 GitHub
+ *   pnpm deploy:only       # 只发布当前的 dist/，不重新构建（同样会推送源码）
+ *   pnpm deploy --no-git   # 只部署服务器，跳过 GitHub 同步
  *   pnpm deploy:cert       # DNS 生效后申请/续期 HTTPS 证书（certbot --nginx）
  *
  * 配置：读取项目根目录 .env.local（已 gitignore），也可用同名环境变量覆盖
@@ -14,11 +15,12 @@
  *   DEPLOY_PASSWORD=...            SSH 密码（与 DEPLOY_KEY_PATH 二选一）
  *   DEPLOY_KEY_PATH=...            SSH 私钥路径
  *   DEPLOY_KEY_PASSPHRASE=...      私钥口令（可选）
- *   DEPLOY_SITE=julyrain.top       站点主域名（同时作为 nginx 配置名）
- *   DEPLOY_DOMAINS="julyrain.top www.julyrain.top"
+ *   DEPLOY_SITE=blog.julyrain.top  站点主域名（同时作为 nginx 配置名）
+ *   DEPLOY_DOMAINS="blog.julyrain.top"
  *   DEPLOY_ROOT=/var/www/julyrain.top   服务器上的站点根目录
  *   DEPLOY_KEEP_RELEASES=5         保留多少个历史版本（用于回滚）
  *   DEPLOY_EMAIL=...               申请证书用的邮箱（deploy:cert 需要）
+ *   DEPLOY_GIT_REMOTE=git@github.com:ZuoQi07/Blog.git   源码仓库地址
  *
  * 服务器上的目录结构：
  *   $DEPLOY_ROOT/
@@ -37,6 +39,7 @@ const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const wantsCert = process.argv.includes("--cert");
 const wantsBuild = process.argv.includes("--build");
+const wantsGit = !process.argv.includes("--no-git");
 
 /** 极简 .env 解析：KEY=VALUE，忽略注释与空行 */
 function loadEnvFile(file) {
@@ -76,6 +79,7 @@ const cfg = {
   keep: Math.max(1, Number(env.DEPLOY_KEEP_RELEASES || 5)),
   email: env.DEPLOY_EMAIL,
   distDir: path.resolve(projectRoot, env.DEPLOY_DIST || "dist"),
+  gitRemote: env.DEPLOY_GIT_REMOTE || "git@github.com:ZuoQi07/Blog.git",
 };
 
 function log(message) {
@@ -352,6 +356,73 @@ async function main() {
   const primary = cfg.domains[0];
   log(`\n提示：若浏览器看到旧内容，请在 CDN 控制台刷新缓存（${primary} 走 CDN 时）`);
   log(`      若域名直接解析到源站，需要执行 pnpm deploy:cert 配置 HTTPS`);
+
+  // 7) 源码同步到 GitHub（--no-git 可跳过）
+  if (wantsGit) {
+    try {
+      await publishGit();
+    } catch (error) {
+      throw new Error(`服务器部署已完成，但源码推送 GitHub 失败：${error.message}`);
+    }
+  }
+}
+
+/** 执行 git 命令；allowFail 时失败返回 null */
+async function git(args, { allowFail = false } = {}) {
+  try {
+    const { stdout } = await execFileAsync("git", args, { cwd: projectRoot, windowsHide: true });
+    return stdout.trim();
+  } catch (error) {
+    if (allowFail) return null;
+    const detail = (error.stderr || error.stdout || error.message || "").trim();
+    throw new Error(`git ${args.join(" ")} 失败：${detail}`);
+  }
+}
+
+/** 提交当前工作区并推送到 GitHub 仓库 */
+async function publishGit() {
+  log(`\n▶ 同步源码到 GitHub（${cfg.gitRemote}）`);
+
+  const inside = await git(["rev-parse", "--is-inside-work-tree"], { allowFail: true });
+  if (inside !== "true") {
+    await git(["init", "-b", "main"]);
+    log("· 已初始化本地 git 仓库");
+  }
+
+  // 没有配置提交身份时给一个默认值，避免首次提交失败
+  if (!(await git(["config", "user.name"], { allowFail: true }))) {
+    await git(["config", "user.name", "ZuoQi07"]);
+  }
+  if (!(await git(["config", "user.email"], { allowFail: true }))) {
+    await git(["config", "user.email", "ZuoQi07@users.noreply.github.com"]);
+  }
+
+  const origin = await git(["remote", "get-url", "origin"], { allowFail: true });
+  if (!origin) {
+    await git(["remote", "add", "origin", cfg.gitRemote]);
+  } else if (origin !== cfg.gitRemote) {
+    await git(["remote", "set-url", "origin", cfg.gitRemote]);
+    log(`· origin 已更新为 ${cfg.gitRemote}`);
+  }
+
+  await git(["add", "-A"]);
+  const staged = await git(["diff", "--cached", "--name-only"]);
+  if (staged) {
+    const files = staged.split("\n").filter(Boolean).length;
+    const stamp = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Shanghai",
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date());
+    await git(["commit", "-m", `deploy: ${stamp}`]);
+    log(`· 已提交 ${files} 个文件：deploy: ${stamp}`);
+  } else {
+    log("· 源码无变更，跳过提交");
+  }
+
+  const branch = (await git(["rev-parse", "--abbrev-ref", "HEAD"], { allowFail: true })) || "main";
+  await git(["push", "-u", "origin", branch]);
+  log(`· 已推送到 origin/${branch}`);
 }
 
 async function applyCertificate() {
