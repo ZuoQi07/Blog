@@ -1,7 +1,5 @@
 {
   "src:assets/images/avatar.avif": "dcd8d5d1cecabea9a9",
-  "public:gallery/firefly-2026/cover.avif": "7588a28a8f989e8d88",
-  "public:gallery/firefly-2026/1.avif": "c8bca9dde6d2babfb5",
   "src:assets/images/logo/firefly-light.png": "000000000000000000",
   "src:assets/images/logo/firefly-dark.png": "ffffffffffffffffff",
   "public:assets/images/ad/ad1.webp": "a1b8b68a8e918c8f93",
@@ -32,5 +30,11 @@
   "public:images/posts/markdown-guide/demo-04.webp": "9d9698a8a29eb9b4b0",
   "public:images/posts/markdown-guide/demo-03.webp": "93a3ee95a7f59fa6e8",
   "public:images/posts/markdown-guide/demo-02.webp": "665b4e4e484548433a",
-  "public:images/posts/markdown-guide/demo-01.webp": "52485a554c62545f6f"
+  "public:images/posts/markdown-guide/demo-01.webp": "52485a554c62545f6f",
+  "public:gallery/illustrations/cover.avif": "665c515049464c473e",
+  "public:gallery/illustrations/5.avif": "997b66a38269665e5e",
+  "public:gallery/illustrations/4.avif": "73709a9a96ae786994",
+  "public:gallery/illustrations/3.avif": "9e9797aaa39ebbb5af",
+  "public:gallery/illustrations/2.avif": "95a4ed94a5f3a4a9e8",
+  "public:gallery/illustrations/1.avif": "cfc9d1c6bbc6b5b6c9"
 }
