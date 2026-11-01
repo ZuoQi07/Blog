@@ -1,16 +1,17 @@
-# 部署说明（一键发布到服务器）
+# 部署说明（一键发布到服务器 + 同步源码到 GitHub）
 
-站点是纯静态产物（`dist/`），部署脚本通过 SSH 上传到服务器，按版本目录存放，并用软链 `current` 原子切换，最后重载 nginx。
+站点是纯静态产物（`dist/`），部署脚本通过 SSH 上传到服务器，按版本目录存放，并用软链 `current` 原子切换，最后重载 nginx；服务器部署完成后，再把源码提交并推送到 GitHub。
 
 ## 常用命令
 
 ```bash
-pnpm deploy        # 一键：构建 + 上传 + 切换 + 重载 nginx
-pnpm deploy:only   # 只发布当前的 dist/（不重新构建）
-pnpm deploy:cert   # DNS 解析生效后，申请/续期 HTTPS 证书
+pnpm deploy            # 一键：构建 + 上传 + 切换 + 重载 nginx + 推送源码到 GitHub
+pnpm deploy:only       # 只发布当前的 dist/（不重新构建，仍会推送源码）
+pnpm deploy --no-git   # 只部署服务器，跳过 GitHub 同步
+pnpm deploy:cert       # DNS 解析生效后，申请/续期 HTTPS 证书
 ```
 
-部署完成后脚本会带 `Host` 头访问服务器本机做自检，返回 200 才算成功。
+部署完成后脚本会带 `Host` 头访问服务器本机做自检，返回 200 才算成功；随后打印 GitHub 提交与推送结果。
 
 ## 配置
 
@@ -28,8 +29,21 @@ pnpm deploy:cert   # DNS 解析生效后，申请/续期 HTTPS 证书
 | `DEPLOY_ROOT` | 服务器上的站点根目录 | `/var/www/julyrain.top` |
 | `DEPLOY_KEEP_RELEASES` | 保留多少个历史版本（回滚用） | `5` |
 | `DEPLOY_EMAIL` | 申请证书用的邮箱 | 空 |
+| `DEPLOY_GIT_REMOTE` | 源码仓库地址 | `git@github.com:ZuoQi07/Blog.git` |
 
 也可以用同名环境变量临时覆盖，例如 `DEPLOY_HOST=1.2.3.4 pnpm deploy`。
+
+## 同步源码到 GitHub
+
+每次部署成功后，脚本会自动把源码提交并推送到 `git@github.com:ZuoQi07/Blog.git`（`main` 分支）：
+
+- 仓库不存在本地 `.git` 时自动 `git init -b main`；
+- `origin` 不存在或地址不一致时自动新增/修正；
+- 没有配置提交身份时，使用 `ZuoQi07 <ZuoQi07@users.noreply.github.com>`（可用 `git config user.name/user.email` 改成本地 Git 账号）；
+- 有改动才提交，提交信息为 `deploy: 2026-11-01 18:46` 这样的时间戳；没有改动则跳过提交，直接推送；
+- 提交内容只有源码：`dist/`、`node_modules/`、`.astro/`、`.env.*`（含密码）、`.astro-paper-backup/`、`.preview/` 都在 `.gitignore` 里，不会被上传。
+
+只想更新服务器、不推送 GitHub 时用 `pnpm deploy --no-git`。
 
 ## 服务器上的结构
 
