@@ -27,6 +27,9 @@ pnpm-debug.log*
 # 迁移预览截图
 .preview/
 
+# 原始图片素材（转换后的壁纸在 src/assets/images 里）
+picture/
+
 # macOS-specific files
 .DS_Store
 
