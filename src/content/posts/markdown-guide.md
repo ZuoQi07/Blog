@@ -36,11 +36,11 @@ pinned: false
 
 图片用 `![替代文字](图片地址)`，本地图片放在 `public/` 下就能用绝对路径引用：
 
-![流萤](/gallery/firefly-2026/cover.avif "可以写 title")
+![示例图片](/images/posts/markdown-guide/demo-01.webp "可以写 title")
 
 ```markdown
 [文字](https://example.com)
-![替代文字](/gallery/firefly-2026/cover.avif "title")
+![替代文字](/images/posts/markdown-guide/demo-01.webp "title")
 ```
 
 ### 列表
@@ -199,9 +199,9 @@ sequenceDiagram
 多张图片并排时，用 `[grid]` 包起来，列数按图片数量自动排：
 
 [grid]
-![流萤](/gallery/firefly-2026/1.avif)
-![封面](/gallery/firefly-2026/cover.avif)
-![樱花](/assets/images/effects/sakura.png)
+![示例图二](/images/posts/markdown-guide/demo-02.webp)
+![示例图三](/images/posts/markdown-guide/demo-03.webp)
+![示例图四](/images/posts/markdown-guide/demo-04.webp)
 [/grid]
 
 ```markdown
