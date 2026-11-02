@@ -64,7 +64,7 @@ loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/posts" })
 | --- | --- | --- | --- |
 | `title` | string | 必填 | 文章标题 |
 | `published` | date | 空则构建时间 | 发布时间，决定排序与显示；留空/省略时自动填入构建时间 |
-| `updated` | date | 空则构建时间 | 更新时间；留空/省略时自动填入构建时间（与 published 同一次构建取同一时间） |
+| `updated` | date | 空则等于 `published` | 更新时间；留空/省略时回退为发布时间，不会产生虚假的“最后修改” |
 | `draft` | boolean | `false` | 草稿；**仅生产构建**隐藏，dev 可见 |
 | `description` | string | `""` | 摘要，用于列表、SEO、OG |
 | `image` | string | `""` | 封面；填 `"api"` 时走随机封面 API |
@@ -335,7 +335,7 @@ order: 10
 # 文章
 title: string            # 必填
 published: date          # 可留空，构建时自动填当前时间
-updated: date            # 可留空，构建时自动填当前时间
+updated: date            # 可留空，缺省时等于 published
 draft: boolean           # 默认 false
 description: string
 image: string            # 可填 "api"
@@ -358,8 +358,8 @@ seriesOrder: number
 
 ## 8. 注意事项
 
-1. **`published` / `updated` 可以留空**：省略或写 `""` 时，构建期自动填入当前时间（同一篇文章的两个缺省值取同一次构建时间）。内容解析结果会被 Astro 缓存，文件不变时后续构建沿用首次解析的时间，想重新生成可删除 `.astro/` 缓存或改动文件。
-2. **`updated` 缺省时也会被填上**：因此文章头会显示更新日期、JSON-LD 的 `dateModified` 等于构建时间；「最后修改」卡片也按这个时间判断。如果不想让每篇文章都显示“最后修改”，可以改成缺省时回退到 `published`。
+1. **`published` / `updated` 可以留空**：`published` 省略或写 `""` 时，构建期自动填入当前时间；`updated` 省略或写 `""` 时回退为 `published`。内容解析结果会被 Astro 缓存，文件不变时后续构建沿用首次解析的时间，想重新生成可删除 `.astro/` 缓存或改动文件。
+2. **`updated` 缺省时等于发布时间**：不会出现“每篇文章都显示最后修改”的情况；只有显式写了 `updated` 且与 `published` 不同时，文章头才会多显示更新日期，JSON-LD 的 `dateModified` 也随该值变化。
 3. **文件名就是 URL**：`posts/hello-world.md` → `/posts/hello-world/`，改名会让旧链接 404。
 4. **中文文件名**在 URL 中会被百分号编码，建议用英文/拼音命名。
 5. `draft: true` 只影响生产构建；本地 `pnpm dev` 仍能访问。
