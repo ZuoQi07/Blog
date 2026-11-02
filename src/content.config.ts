@@ -59,12 +59,31 @@ type ContentCollection<T> = CollectionConfig<
 	ReturnType<typeof glob>
 >;
 
+/**
+ * 日期字段：允许留空或省略。
+ * - 留空（`published:` / `published: ""`）或完全省略时，构建期自动填入当前时间；
+ * - 同一次构建内只取一次时间，保证 published 与 updated 缺省时完全一致；
+ * - 正常写日期时按原值解析。
+ */
+let buildTimestamp: Date | undefined;
+const buildNow = () => (buildTimestamp ??= new Date());
+
+const autoDate = () =>
+	z.preprocess(
+		(value) => {
+			if (value === undefined || value === null) return undefined;
+			if (typeof value === "string" && value.trim() === "") return undefined;
+			return value;
+		},
+		z.date().optional().default(() => buildNow()),
+	);
+
 const postsCollection: ContentCollection<PostData> = defineCollection({
 	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/posts" }),
 	schema: z.object({
 		title: z.string(),
-		published: z.date(),
-		updated: z.date().optional(),
+		published: autoDate(),
+		updated: autoDate(),
 		draft: z.boolean().optional().default(false),
 		description: z.string().optional().default(""),
 		image: z.string().optional().default(""),

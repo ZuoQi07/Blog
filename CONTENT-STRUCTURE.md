@@ -63,8 +63,8 @@ loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/posts" })
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `title` | string | 必填 | 文章标题 |
-| `published` | date | **必填** | 发布时间，决定排序与显示 |
-| `updated` | date | — | 更新时间，显示「最后修改」 |
+| `published` | date | 空则构建时间 | 发布时间，决定排序与显示；留空/省略时自动填入构建时间 |
+| `updated` | date | 空则构建时间 | 更新时间；留空/省略时自动填入构建时间（与 published 同一次构建取同一时间） |
 | `draft` | boolean | `false` | 草稿；**仅生产构建**隐藏，dev 可见 |
 | `description` | string | `""` | 摘要，用于列表、SEO、OG |
 | `image` | string | `""` | 封面；填 `"api"` 时走随机封面 API |
@@ -334,8 +334,8 @@ order: 10
 ```yaml
 # 文章
 title: string            # 必填
-published: date          # 必填
-updated: date
+published: date          # 可留空，构建时自动填当前时间
+updated: date            # 可留空，构建时自动填当前时间
 draft: boolean           # 默认 false
 description: string
 image: string            # 可填 "api"
@@ -358,11 +358,13 @@ seriesOrder: number
 
 ## 8. 注意事项
 
-1. **文件名就是 URL**：`posts/hello-world.md` → `/posts/hello-world/`，改名会让旧链接 404。
-2. **中文文件名**在 URL 中会被百分号编码，建议用英文/拼音命名。
-3. `draft: true` 只影响生产构建；本地 `pnpm dev` 仍能访问。
-4. 加密文章不显示评论、不参与相关推荐、搜索引擎不收录。
-5. `spec` 下的文件名是固定的（`about`/`friends`/`guestbook`），改文件名会导致对应页面报「内容不存在」。
-6. 修改 schema 字段后需要重启 dev server 才会重新生成类型。
-7. `public/` 里的图片不会经过压缩和哈希，替换同名文件后记得刷新 CDN。
-8. 文章排序是「置顶优先 + 发布时间倒序」，与文件系统里的顺序无关。
+1. **`published` / `updated` 可以留空**：省略或写 `""` 时，构建期自动填入当前时间（同一篇文章的两个缺省值取同一次构建时间）。内容解析结果会被 Astro 缓存，文件不变时后续构建沿用首次解析的时间，想重新生成可删除 `.astro/` 缓存或改动文件。
+2. **`updated` 缺省时也会被填上**：因此文章头会显示更新日期、JSON-LD 的 `dateModified` 等于构建时间；「最后修改」卡片也按这个时间判断。如果不想让每篇文章都显示“最后修改”，可以改成缺省时回退到 `published`。
+3. **文件名就是 URL**：`posts/hello-world.md` → `/posts/hello-world/`，改名会让旧链接 404。
+4. **中文文件名**在 URL 中会被百分号编码，建议用英文/拼音命名。
+5. `draft: true` 只影响生产构建；本地 `pnpm dev` 仍能访问。
+6. 加密文章不显示评论、不参与相关推荐、搜索引擎不收录。
+7. `spec` 下的文件名是固定的（`about`/`friends`/`guestbook`），改文件名会导致对应页面报「内容不存在」。
+8. 修改 schema 字段后需要重启 dev server 才会重新生成类型。
+9. `public/` 里的图片不会经过压缩和哈希，替换同名文件后记得刷新 CDN。
+10. 文章排序是「置顶优先 + 发布时间倒序」，与文件系统里的顺序无关。
