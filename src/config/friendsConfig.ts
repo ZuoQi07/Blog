@@ -49,6 +49,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 10,
 		enabled: true,
 	},
+	{
+		title: "白糖的记事本",
+		imgurl: "/friends/sugarmgp.png",
+		desc: "",
+		siteurl: "https://blog.sugarmgp.cn/",
+		tags: ["Blog"],
+		weight: 10,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
