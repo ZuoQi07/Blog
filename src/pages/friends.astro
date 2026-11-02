@@ -126,13 +126,19 @@ const description =
                 class="absolute top-3 right-3 text-(--primary) text-lg opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
               />
 
-              {/* 头像 */}
+              {/* 头像（为空时用标题首字占位） */}
               <div class="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform duration-300">
-                <img
-                  src={item.imgurl}
-                  alt={item.title}
-                  class="w-full h-full object-cover"
-                />
+                {item.imgurl ? (
+                  <img
+                    src={item.imgurl}
+                    alt={item.title}
+                    class="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div class="w-full h-full flex items-center justify-center bg-(--primary)/10 text-(--primary) text-2xl font-bold select-none">
+                    {item.title.slice(0, 1)}
+                  </div>
+                )}
               </div>
 
               {/* 内容 */}
@@ -141,12 +147,14 @@ const description =
                   {item.title}
                 </div>
 
-                <div
-                  class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-1"
-                  title={item.desc}
-                >
-                  {item.desc}
-                </div>
+                {item.desc && (
+                  <div
+                    class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-1"
+                    title={item.desc}
+                  >
+                    {item.desc}
+                  </div>
+                )}
 
                 {/* 标签 */}
                 <div class="flex flex-wrap gap-1 mt-1">
