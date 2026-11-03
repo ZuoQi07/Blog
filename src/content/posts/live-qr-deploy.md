@@ -42,10 +42,10 @@ pinned: false
 给我的域名加了一条 A 记录：
 
 ```
-qr.julyrain.top  A  121.199.9.157
+qr.julyrain.top  A  <服务器IP>
 ```
 
-还是用之前的火山引擎 DNS 脚本（`node scripts/volc-dns.mjs add-a julyrain.top qr 121.199.9.157`），几秒钟就生效了。
+还是用之前的火山引擎 DNS 脚本（`node scripts/volc-dns.mjs add-a julyrain.top qr <服务器IP>`），几秒钟就生效了。
 
 ### 2. 把代码弄上服务器
 
@@ -54,7 +54,7 @@ qr.julyrain.top  A  121.199.9.157
 ```bash
 git clone --depth 1 https://github.com/Dynesshely/Live-QR.git
 tar -czf live-qr.tar.gz Live-QR
-scp live-qr.tar.gz zuoqi@server:/tmp/
+scp live-qr.tar.gz <用户>@<服务器>:/tmp/
 ```
 
 然后在服务器上解压到 `/opt/Live-QR`。
