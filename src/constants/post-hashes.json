@@ -9,6 +9,11 @@
 		"published": "2026-10-27T16:00:00.000Z",
 		"updated": "2026-10-27T16:00:00.000Z"
 	},
+	"live-qr-deploy": {
+		"hash": "1593cafc69a3839c39dbbf21f4e6b30ad634deaf7df1271960df048a928c3a3a",
+		"published": "2026-11-03T17:30:00.000Z",
+		"updated": "2026-11-03T17:32:24.555Z"
+	},
 	"markdown-guide": {
 		"hash": "e7435a9452f51082972024a75943681fbd18ae940d7030c273c9fb48fb877d16",
 		"published": "2026-11-01T12:20:00.000Z",
