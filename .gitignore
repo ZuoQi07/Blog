@@ -57,3 +57,6 @@ package/
 .codex*
 .claude
 .mimocode
+
+# 部署说明（含服务器信息，不提交）
+DEPLOY.md
