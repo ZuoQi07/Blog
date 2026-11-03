@@ -130,21 +130,6 @@ try {
       "POST",
     );
     console.log(JSON.stringify(body.Result ?? body, null, 2));
-  } else if (command === "test") {
-    const variants = [
-      ["ListRecords", { ZID: 127157 }, "GET"],
-      ["ListRecords", { ZID: 127157 }, "POST"],
-      ["CreateRecord", { ZID: 127157, Host: "comment", Type: "A", Value: "121.199.9.157" }, "POST"],
-      ["CreateRecord", { ZID: "127157", Host: "comment", Type: "A", Value: "121.199.9.157", TTL: "600", Line: "0" }, "GET"],
-    ];
-    for (const [action, params, method] of variants) {
-      try {
-        const result = await call(action, params, method);
-        console.log(`${action} ${method}: OK ${JSON.stringify(result).slice(0, 180)}`);
-      } catch (error) {
-        console.log(`${action} ${method}: FAIL ${error.message.slice(0, 200)}`);
-      }
-    }
   } else {
     console.log("用法: zones | records <域名> | add-a <域名> <主机记录> <IP>");
     process.exit(1);

@@ -9,7 +9,7 @@
  *   pnpm deploy:cert       # DNS 生效后申请/续期 HTTPS 证书（certbot --nginx）
  *
  * 配置：读取项目根目录 .env.local（已 gitignore），也可用同名环境变量覆盖
- *   DEPLOY_HOST=121.199.9.157      服务器地址
+ *   DEPLOY_HOST=<服务器IP或域名>    服务器地址
  *   DEPLOY_PORT=22                 SSH 端口
  *   DEPLOY_USER=root               SSH 用户
  *   DEPLOY_KEY_PATH=...            SSH 私钥路径（推荐，服务器已关闭密码登录）
@@ -281,7 +281,7 @@ async function preflight() {
     log("    2) 阿里云安全组：确认 22 端口对当前出口 IP 开放（家庭宽带/VPN 出口 IP 变了会被挡）");
     log("    3) 云安全中心「暴力破解防御」：多次认证失败会封禁来源 IP，需要在控制台解封（常见 24 小时）");
     log("    4) 服务器上的 fail2ban / iptables：VNC 登录后 fail2ban-client status sshd / iptables -L -n");
-    log("    5) 用 check-host.net 从别的地区测 121.199.9.157:22：外部能连、只有你连不上 = IP 被封");
+    log("    5) 用 check-host.net 从别的地区测 <服务器IP>:22：外部能连、只有你连不上 = IP 被封");
   } else {
     log("  · 80 端口也连不上，服务器可能宕机或网络异常，请先在阿里云控制台检查实例状态。");
   }
