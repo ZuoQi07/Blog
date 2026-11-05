@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "firefly",
   "type": "module",
   "version": "6.16.9",
@@ -26,6 +26,7 @@
     "deploy:only": "node scripts/deploy.mjs",
     "deploy:check": "node scripts/deploy.mjs --check",
     "deploy:refresh": "node scripts/deploy.mjs --refresh-only",
+    "picgo:server": "node scripts/picgo-server.mjs",
     "deploy:cert": "node scripts/deploy.mjs --cert"
   },
   "dependencies": {
@@ -117,3 +118,4 @@
     "subset-font": "^2.9.0"
   }
 }
+
