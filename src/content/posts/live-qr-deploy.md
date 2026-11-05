@@ -14,7 +14,7 @@ pinned: false
 
 我把它部署到了自己的服务器：**<https://qr.julyrain.top>**。
 
-![Live-QR 首页](/images/posts/live-qr/screenshot.png)
+![Live-QR 首页](https://img.julyrain.top/blog/images/posts/live-qr/screenshot.png)
 
 ## 它是什么
 

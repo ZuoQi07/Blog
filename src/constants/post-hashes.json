@@ -10,14 +10,19 @@
 		"updated": "2026-10-27T16:00:00.000Z"
 	},
 	"live-qr-deploy": {
-		"hash": "e1a235e82c2117332fe7d2029efaa363be82ecd0429089aab024b877a16bf1a7",
+		"hash": "777cef9a7d180df0c628b0c4c73dceb7b4e07412f6fd2a291bcf121c62bb469b",
 		"published": "2026-11-03T17:30:00.000Z",
-		"updated": "2026-11-03T18:21:42.381Z"
+		"updated": "2026-11-05T07:56:41.718Z"
 	},
 	"markdown-guide": {
-		"hash": "e7435a9452f51082972024a75943681fbd18ae940d7030c273c9fb48fb877d16",
+		"hash": "103604d729f6bb4240671dd4f3c5245a8dac41d3736afaf29dec4f6537c8ec84",
 		"published": "2026-11-01T12:20:00.000Z",
-		"updated": "2026-11-01T12:20:00.000Z"
+		"updated": "2026-11-05T07:56:41.718Z"
+	},
+	"r2-cdn-image-host": {
+		"hash": "270e47103eed7766ce7651fff61915aa8ddbed70a8cd8c8b852ce8c79cdd794a",
+		"published": "2026-11-05T08:20:00.000Z",
+		"updated": "2026-11-05T08:20:00.000Z"
 	},
 	"webdav-self-hosted": {
 		"hash": "7ba9741310f7af6e3099046f049642f4d0aebfa2e89c5f5371863543b5d16fff",

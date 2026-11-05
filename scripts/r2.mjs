@@ -13,6 +13,7 @@
  *   CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN
  *   R2_BUCKET（默认 blog-images）/ R2_PUBLIC_DOMAIN
  */
+import crypto from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -51,6 +52,48 @@ async function api(method, url, body, contentType) {
 
 const [command, ...args] = process.argv.slice(2);
 
+const CDN_DOMAIN = env.IMG_CDN_DOMAIN || "img.julyrain.top";
+
+/** 上传后刷新阿里云 CDN 上的同名对象 */
+async function refreshCdn(key) {
+  const ak = env.ALIYUN_ACCESS_KEY_ID;
+  const sk = env.ALIYUN_ACCESS_KEY_SECRET;
+  if (!ak || !sk) return;
+
+  const encode = (v) =>
+    encodeURIComponent(String(v))
+      .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+      .replace(/%20/g, "%20");
+
+  const params = {
+    Action: "RefreshObjectCaches",
+    Version: "2018-05-10",
+    Format: "JSON",
+    AccessKeyId: ak,
+    SignatureMethod: "HMAC-SHA1",
+    SignatureVersion: "1.0",
+    SignatureNonce: crypto.randomUUID(),
+    Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+    ObjectType: "File",
+    ObjectPath: `https://${CDN_DOMAIN}/${key}`,
+  };
+  const query = Object.keys(params)
+    .sort()
+    .map((k) => `${encode(k)}=${encode(params[k])}`)
+    .join("&");
+  const sig = crypto
+    .createHmac("sha1", `${sk}&`)
+    .update(`GET&%2F&${encode(query)}`)
+    .digest("base64");
+  const res = await fetch(`https://cdn.aliyuncs.com/?${query}&Signature=${encode(sig)}`);
+  const json = await res.json().catch(() => ({}));
+  if (json.RefreshTaskId) {
+    console.log(`CDN 刷新已提交：${json.RefreshTaskId}`);
+  } else {
+    console.log(`CDN 刷新失败：${json.Message || res.status}`);
+  }
+}
+
 try {
   if (command === "list") {
     const prefix = args[0] || "";
@@ -68,6 +111,15 @@ try {
     const json = await res.json();
     if (!json.success) throw new Error(`HTTP ${res.status}: ${JSON.stringify(json.errors)}`);
     console.log(`PUT ${key} -> ${json.result.size} bytes, etag ${json.result.etag}`);
+    try {
+      await refreshCdn(key);
+    } catch (error) {
+      console.log(`CDN 刷新异常：${error.message}`);
+    }
+  } else if (command === "refresh") {
+    const [key] = args;
+    if (!key) throw new Error("用法: refresh <对象键>");
+    await refreshCdn(key);
   } else if (command === "get") {
     const [key, out] = args;
     if (!key || !out) throw new Error("用法: get <对象键> <输出文件>");
@@ -87,7 +139,7 @@ try {
     if (!publicDomain) throw new Error("缺少 R2_PUBLIC_DOMAIN");
     console.log(`https://${publicDomain}/${key}`);
   } else {
-    console.log("用法: list [前缀] | put <文件> <键> [类型] | get <键> <输出> | delete <键> | url <键>");
+    console.log("用法: list [前缀] | put <文件> <键> [类型] | get <键> <输出> | delete <键> | refresh <键> | url <键>");
     process.exit(1);
   }
 } catch (error) {
