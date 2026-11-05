@@ -130,8 +130,37 @@ try {
       "POST",
     );
     console.log(JSON.stringify(body.Result ?? body, null, 2));
+  } else if (command === "add") {
+    const [zoneName, host, type, value] = args;
+    if (!zoneName || !host || !type || !value) {
+      throw new Error("用法: add <域名> <主机记录> <类型> <值>");
+    }
+    const zones = await call("ListZones", { PageSize: "100", Key: zoneName });
+    const zone = (zones.Result?.Zones ?? []).find((z) => z.ZoneName === zoneName);
+    if (!zone) throw new Error(`没有找到域名 ${zoneName}`);
+    const body = await call(
+      "CreateRecord",
+      { ZID: Number(zone.ZID), Host: host, Type: type.toUpperCase(), Value: value },
+      "POST",
+    );
+    console.log(JSON.stringify(body.Result ?? body, null, 2));
+  } else if (command === "delete") {
+    const [zoneName, host, type] = args;
+    if (!zoneName || !host) throw new Error("用法: delete <域名> <主机记录> [类型]");
+    const zones = await call("ListZones", { PageSize: "100", Key: zoneName });
+    const zone = (zones.Result?.Zones ?? []).find((z) => z.ZoneName === zoneName);
+    if (!zone) throw new Error(`没有找到域名 ${zoneName}`);
+    const listing = await call("ListRecords", { ZID: String(zone.ZID), PageSize: "100" });
+    const matches = (listing.Result?.Records ?? []).filter(
+      (r) => r.Host === host && (!type || r.Type === type.toUpperCase()),
+    );
+    if (matches.length === 0) throw new Error(`没有找到 ${host} 的记录`);
+    for (const record of matches) {
+      await call("DeleteRecord", { ZID: Number(zone.ZID), RecordID: String(record.RecordID) }, "POST");
+      console.log(`deleted ${record.FQDN} ${record.Type} ${record.Value}`);
+    }
   } else {
-    console.log("用法: zones | records <域名> | add-a <域名> <主机记录> <IP>");
+    console.log("用法: zones | records <域名> | add-a <域名> <主机> <IP> | add <域名> <主机> <类型> <值> | delete <域名> <主机> [类型]");
     process.exit(1);
   }
 } catch (error) {
