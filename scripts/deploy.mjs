@@ -538,7 +538,7 @@ async function publishGit() {
       dateStyle: "short",
       timeStyle: "short",
     }).format(new Date());
-    await git(["commit", "-m", `deploy: ${stamp}`]);
+    await git(["commit", "-m", `deploy: ${stamp} [skip ci]`]);
     log(`· 已提交 ${files} 个文件：deploy: ${stamp}`);
   } else {
     log("· 源码无变更，跳过提交");
