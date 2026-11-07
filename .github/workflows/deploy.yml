@@ -1,0 +1,65 @@
+name: Deploy to server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: blog-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: "22"
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SITE: blog.julyrain.top
+      DEPLOY_DOMAINS: blog.julyrain.top
+      DEPLOY_ROOT: /var/www/julyrain.top
+      DEPLOY_KEEP_RELEASES: "5"
+      DEPLOY_KEY_PATH: ${{ github.workspace }}/.deploy_key
+      ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+      ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Check deploy secrets
+        id: secrets
+        run: |
+          if [ -z "${{ secrets.DEPLOY_HOST }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "DEPLOY_HOST 未配置，跳过部署步骤"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write deploy key
+        if: steps.secrets.outputs.configured == 'true'
+        run: |
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > "$DEPLOY_KEY_PATH"
+          chmod 600 "$DEPLOY_KEY_PATH"
+
+      - name: Deploy (upload, switch, reload nginx, refresh CDN)
+        if: steps.secrets.outputs.configured == 'true'
+        run: node scripts/deploy.mjs --no-git
