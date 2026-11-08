@@ -58,6 +58,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 10,
 		enabled: true,
 	},
+	{
+		title: "银渐层的博客",
+		imgurl: "/friends/silver.png",
+		desc: "银渐层的个人主页与技术博客与摄影作品",
+		siteurl: "https://blog.silvershaded.top/",
+		tags: ["Blog"],
+		weight: 10,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
