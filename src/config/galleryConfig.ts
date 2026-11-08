@@ -18,7 +18,7 @@ export const galleryConfig: GalleryConfig = {
 		{
 			id: "illustrations",
 			name: "插画集",
-			description: "平时画的一些插画，慢慢攒起来。",
+			description: "平时收集的插画",
 			location: "",
 			date: "2026-11-01",
 			tags: ["插画", "Arcaea"],
