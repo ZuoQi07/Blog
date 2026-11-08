@@ -34,7 +34,7 @@ pinned: false
 
 站内链接写相对路径，站外链接会在新标签页打开：[Astro 文档](https://docs.astro.build)、[关于我](/about/)。
 
-图片用 `![替代文字](图片地址)`，本地图片放在 `public/` 下就能用绝对路径引用：
+图片用 `![替代文字](图片地址)`，文章配图统一上传到图床后用完整 URL 引用（图标、壁纸这类站点资源才放在 `public/` 或 `src/assets/`）：
 
 ![示例图片](https://img.julyrain.top/blog/images/posts/markdown-guide/demo-01.webp "可以写 title")
 
