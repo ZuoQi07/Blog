@@ -215,11 +215,11 @@ sequenceDiagram
 
 Obsidian 风格的 `[[文章]]` 可以按文件名链接到其他文章，支持 `[[文件名|显示文字]]`：
 
-[[hello-world|在七月的雨里开始]]
+[[webdav-self-hosted|在服务器上搭一个 WebDAV]]
 
 ```markdown
-[[hello-world]]
-[[hello-world|在七月的雨里开始]]
+[[webdav-self-hosted]]
+[[webdav-self-hosted|在服务器上搭一个 WebDAV]]
 ```
 
 ## 文章 Frontmatter

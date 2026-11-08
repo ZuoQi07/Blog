@@ -4,20 +4,15 @@
 		"published": "2026-11-02T04:30:00.000Z",
 		"updated": "2026-11-02T04:30:00.000Z"
 	},
-	"hello-world": {
-		"hash": "d5358b08c82e1a323106a1ed376e96be74499b769d7be6900c0c7ae1c90156bf",
-		"published": "2026-10-27T16:00:00.000Z",
-		"updated": "2026-10-27T16:00:00.000Z"
-	},
 	"live-qr-deploy": {
 		"hash": "777cef9a7d180df0c628b0c4c73dceb7b4e07412f6fd2a291bcf121c62bb469b",
 		"published": "2026-11-03T17:30:00.000Z",
 		"updated": "2026-11-05T07:56:41.718Z"
 	},
 	"markdown-guide": {
-		"hash": "103604d729f6bb4240671dd4f3c5245a8dac41d3736afaf29dec4f6537c8ec84",
+		"hash": "57b93be24123ba4abf673c3e779977b18f557100820d85f3380c4fd7b32f8801",
 		"published": "2026-11-01T12:20:00.000Z",
-		"updated": "2026-11-05T07:56:41.718Z"
+		"updated": "2026-11-08T08:05:04.435Z"
 	},
 	"r2-cdn-image-host": {
 		"hash": "270e47103eed7766ce7651fff61915aa8ddbed70a8cd8c8b852ce8c79cdd794a",
