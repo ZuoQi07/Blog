@@ -432,14 +432,16 @@ async function main() {
     }
   }
 
-  // 8) 提交 IndexNow（Bing / Yandex，失败不影响发布）
-  try {
-    const { stdout } = await execFileAsync(process.execPath, [
-      path.join(projectRoot, "scripts/indexnow.mjs"),
-    ]);
-    log(`· ${stdout.trim()}`);
-  } catch (error) {
-    log(`⚠ IndexNow 提交失败（不影响发布）：${String(error.message).split("\n")[0]}`);
+  // 8) 提交 IndexNow（Bing / Yandex，默认关闭；INDEXNOW_ENABLE=1 开启）
+  if (process.env.INDEXNOW_ENABLE === "1") {
+    try {
+      const { stdout } = await execFileAsync(process.execPath, [
+        path.join(projectRoot, "scripts/indexnow.mjs"),
+      ]);
+      log(`· ${stdout.trim()}`);
+    } catch (error) {
+      log(`⚠ IndexNow 提交失败（不影响发布）：${String(error.message).split("\n")[0]}`);
+    }
   }
 
   // 9) 源码同步到 GitHub（--no-git 可跳过）
