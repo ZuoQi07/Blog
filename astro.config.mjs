@@ -1,4 +1,5 @@
 import { setMaxListeners } from "node:events";
+import { readFileSync, readdirSync } from "node:fs";
 import cloudflare from "@astrojs/cloudflare";
 import { unified } from "@astrojs/markdown-remark";
 import mdx from "@astrojs/mdx";
@@ -66,6 +67,23 @@ const adapter = process.env.CF_WORKERS
 	: undefined;
 
 // https://astro.build/config
+// sitemap 用：文章最后更新时间 & 空集合判断
+let postHashes = {};
+try {
+	postHashes = JSON.parse(readFileSync("./src/constants/post-hashes.json", "utf8"));
+} catch {
+	postHashes = {};
+}
+const hasMarkdown = (dir) => {
+	try {
+		return readdirSync(dir).some((name) => /\.(md|mdx)$/i.test(name));
+	} catch {
+		return false;
+	}
+};
+const hasProjectsContent = hasMarkdown("./src/content/projects");
+const hasDynamicContent = hasMarkdown("./src/content/dynamic");
+
 export default defineConfig({
 	site: siteConfig.site_url,
 
@@ -239,6 +257,16 @@ export default defineConfig({
 				// 根据页面开关配置过滤sitemap
 				const url = new URL(page);
 				const pathname = url.pathname;
+				// 工具页、空集合不进 sitemap
+				if (["/search/", "/rss/", "/atom/"].includes(pathname)) {
+					return false;
+				}
+				if (!hasProjectsContent && pathname.startsWith("/projects")) {
+					return false;
+				}
+				if (!hasDynamicContent && pathname.startsWith("/dynamic")) {
+					return false;
+				}
 				if (pathname === "/dynamic/" && !siteConfig.pages.dynamic) {
 					return false;
 				}
@@ -279,6 +307,15 @@ export default defineConfig({
 					return false;
 				}
 				return true;
+			},
+			serialize: (item) => {
+				const url = new URL(item.url);
+				const match = /^\/posts\/([^/]+)\/$/.exec(url.pathname);
+				const record = match ? postHashes[match[1]] : null;
+				const lastmod = record?.updated || record?.published;
+				return lastmod
+					? { url: item.url, lastmod: new Date(lastmod).toISOString() }
+					: { url: item.url };
 			},
 		}),
 		mdx(),
