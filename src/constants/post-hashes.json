@@ -23,5 +23,10 @@
 		"hash": "7ba9741310f7af6e3099046f049642f4d0aebfa2e89c5f5371863543b5d16fff",
 		"published": "2026-11-05T06:15:00.000Z",
 		"updated": "2026-11-05T06:15:00.000Z"
+	},
+	"wr30u-openwrt-flash": {
+		"hash": "6b2730d450a53e8e9fb32383a767c60a10ea0e0a281619fdb99e58e5a9d58e2e",
+		"published": "2026-11-22T08:10:00.000Z",
+		"updated": "2026-11-22T08:10:00.000Z"
 	}
 }
